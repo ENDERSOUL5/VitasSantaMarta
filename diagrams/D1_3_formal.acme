@@ -1,77 +1,132 @@
 // ============================================================
 // VITASMARTA · ACME ADL · Motor de Recomendación IA
-// Aspecto: ServicioIA -> ServicioCatalogo (Punto 1.3)
-// Base: ERS VITASMARTA v3.0 (RD-03, RF-07, RF-07-8, RNF-03, RD-16)
+// Aspecto: ServicioIA y sus colaboradores (Punto 1.3)
+// Base: ERS v3.0 (RD-03, RD-11, RD-16, RF-07, RF-07-3, RF-07-8,
+//       RF-07-16, RF-08-4, RF-13-7, RNF-03, RNF-08-4)
 // Bass, Clements y Kazman, Cap. 22.3 — Notación Formal
 // Validable sintácticamente en AcmeStudio (CMU)
 // ============================================================
 
-System VITASMARTARecommendationSystem = {
+System VITASMARTARecomendacion = {
 
-  // COMPONENTES
+  // COMPONENTES (8)
+
+  Component ApiGateway = {
+    Port recomendacion_out = { };   // requerido: invoca IRecommendation
+    Property responsabilidad : string = "Borde unico: JWT, RBAC, rate limiting";
+  };
 
   Component ServicioIA = {
-    Port solicitud_in = { };  // Puerto provisto: recibe solicitud de recomendación
-    Port catalogo_req = { };  // Puerto requerido: solicita atractivos al catálogo
-    Port perfil_req = { };    // Puerto requerido: lee preferencias de usuario
-    Port sos_req = { };       // Puerto requerido: consulta capacidad de carga
-    Port evento_out = { };    // Puerto de salida: publica RecomendacionGenerada
+    Port solicitud_in = { };        // provisto: IRecommendation
+    Port catalogo_req = { };        // requerido: ICatalogo
+    Port perfil_req = { };          // requerido: IPerfil
+    Port sos_req = { };             // requerido: ISostenibilidad
+    Port fallback_req = { };        // requerido: delega en FallbackHandler
+    Port explicar_req = { };        // requerido: delega en ExplainabilityModule
+    Port evento_out = { };          // salida: publica RecomendacionGenerada
 
-    Property responsabilidad : string = "Motor colaborativo + basado en contenido";
-    Property fallback : boolean = true;   // RF-07-8: degradación controlada activa
-    Property explicable : boolean = true; // RF-07-3: explicación por recomendación
+    Property estrategia : string = "Colaborativo + basado en contenido";
+    Property timeout_ia_ms : int = 1200;   // margen para el fallback dentro del objetivo p95 <= 2000 ms (derivado de RNF-03 y RNF-08-4)
+  };
+
+  Component FallbackHandler = {
+    Port invocar_in = { };          // provisto: reglas simples (RF-07-8)
+    Property activacion : string = "timeout | items=0 | cold-start (RF-07-16)";
+  };
+
+  Component ExplainabilityModule = {
+    Port explicar_in = { };         // provisto: explicacion por recomendacion (RF-07-3)
   };
 
   Component ServicioCatalogo = {
-    Port atractivos_out = { }; // Puerto provisto: expone atractivos activos
-    Port cache_port = { };     // Puerto interno: accede a Redis TTL = 15 min
-
+    Port atractivos_out = { };      // provisto: ICatalogo
     Property estilo : string = "CQRS-ReadModel";
-    Property replicas : int = 3; // RNF-01: escalado horizontal en pico
   };
 
-  Component ServicioPerfil = {
-    Port perfil_out = { }; // Puerto provisto: expone preferencias e historial
-    Property aislamiento : string = "multi-tenant";
+  Component ServicioIdentidad = {
+    Port perfil_out = { };          // provisto: IPerfil (RF-08-4)
+    Property aislamiento : string = "multi-tenant logico (REG-02)";
+  };
+
+  Component ServicioAmbiental = {
+    Port sostenibilidad_out = { };  // provisto: ISostenibilidad (RF-13-7)
+    Property umbrales : string = "80/85/90 (RF-13-11)";
   };
 
   Component BusMensajes = {
-    Port entrada = { }; // Puerto entrada: recibe eventos de dominio
-    Port salida = { };  // Puerto salida: entrega a consumidores
-    Property patron : string = "TransactionalOutbox-RD16";
+    Port entrada = { };             // recibe eventos de dominio
+    Property patron : string = "RabbitMQ-IC-03";
     Property entrega : string = "at-least-once";
   };
 
-  // CONECTORES
+  // CONECTORES (uno por interaccion)
 
-  Connector RestCallReturn = {
-    Role cliente = { }; // Rol: componente que inicia la llamada síncrona
-    Role servidor = { }; // Rol: componente que responde
-    Property protocolo : string = "REST/JSON-HTTPS";
-    Property timeout_ms : int = 2000; // RNF-03: p95 <= 2 s
-    Property idempotente : boolean = true; // RF-05-7
+  Connector RestGatewayIA = {
+    Role cliente = { };
+    Role servidor = { };
+    Property protocolo : string = "REST/JSON-HTTPS-TLS1.2+";
   };
 
-  Connector EventPublisher = {
-    Role productor = { }; // Rol: componente que publica el evento
-    Role broker = { };    // Rol: bus de mensajes receptor
-    Property patron : string = "Outbox-async";
+  Connector RestIACatalogo = {
+    Role cliente = { };
+    Role servidor = { };
+    Property protocolo : string = "REST/JSON";
+    Property solo_lectura : boolean = true;     // decision D4/CQRS
+  };
+
+  Connector RestIAPerfil = {
+    Role cliente = { };
+    Role servidor = { };
+    Property protocolo : string = "REST/JSON";
+  };
+
+  Connector RestIAAmbiental = {
+    Role cliente = { };
+    Role servidor = { };
+    Property protocolo : string = "REST/JSON";
+  };
+
+  Connector LlamadaFallback = {
+    Role cliente = { };
+    Role servidor = { };
+    Property modo : string = "in-process";
+  };
+
+  Connector LlamadaExplicacion = {
+    Role cliente = { };
+    Role servidor = { };
+    Property modo : string = "in-process";
+  };
+
+  Connector EventoRecomendacion = {
+    Role productor = { };
+    Role broker = { };
     Property garantia : string = "at-least-once";
+    Property correlacion : boolean = true;      // RD-11
   };
 
-  // ADJUNTOS (Attachments)
+  // ADJUNTOS (14 — cada puerto queda adjuntado)
 
   Attachments {
-    // ServicioIA llama síncronamente al catálogo para obtener atractivos
-    ServicioIA.catalogo_req to RestCallReturn.cliente;
-    ServicioCatalogo.atractivos_out to RestCallReturn.servidor;
+    ApiGateway.recomendacion_out to RestGatewayIA.cliente;
+    ServicioIA.solicitud_in to RestGatewayIA.servidor;
 
-    // ServicioIA publica RecomendacionGenerada al bus (asíncrono)
-    ServicioIA.evento_out to EventPublisher.productor;
-    BusMensajes.entrada to EventPublisher.broker;
+    ServicioIA.catalogo_req to RestIACatalogo.cliente;
+    ServicioCatalogo.atractivos_out to RestIACatalogo.servidor;
 
-    // ServicioIA llama síncronamente al perfil de usuario
-    ServicioIA.perfil_req to RestCallReturn.cliente;
-    ServicioPerfil.perfil_out to RestCallReturn.servidor;
+    ServicioIA.perfil_req to RestIAPerfil.cliente;
+    ServicioIdentidad.perfil_out to RestIAPerfil.servidor;
+
+    ServicioIA.sos_req to RestIAAmbiental.cliente;
+    ServicioAmbiental.sostenibilidad_out to RestIAAmbiental.servidor;
+
+    ServicioIA.fallback_req to LlamadaFallback.cliente;
+    FallbackHandler.invocar_in to LlamadaFallback.servidor;
+
+    ServicioIA.explicar_req to LlamadaExplicacion.cliente;
+    ExplainabilityModule.explicar_in to LlamadaExplicacion.servidor;
+
+    ServicioIA.evento_out to EventoRecomendacion.productor;
+    BusMensajes.entrada to EventoRecomendacion.broker;
   }
 };
