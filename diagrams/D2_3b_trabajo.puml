@@ -1,7 +1,9 @@
 @startuml D2_3b_trabajo
 ' Figura 2.3b — Vista de Asignación de Trabajo: módulos -> responsables
 ' según los roles del ERS VITASMARTA v3.0 (sección 2.7) y el plan por
-' bloques de la sección 2.8.3.
+' bloques de la sección 2.8.3. Bloque B = «Catálogo y prestadores» (M4
+' incluido); RF-12 vive en los Bloques B/C; Bloque E = Inteligencia,
+' reportes y sostenibilidad (M6, M8, M9).
 skinparam backgroundColor #FFFFFF
 skinparam shadowing false
 skinparam defaultFontSize 11
@@ -11,14 +13,14 @@ skinparam nodesep 24
 skinparam ranksep 36
 skinparam packagePadding 10
 
-actor "Jose Aguilar\n[Líder Técnico /\nArquitecto]" as JA #0F2B46;line:0B1B2C
-actor "Sebastian Botia\n[Analista de\nRequisitos]" as SB #0E8A7D;line:0B5E55
+actor "José Aguilar\n[Líder Técnico /\nArquitecto]" as JA #0F2B46;line:0B1B2C
+actor "Sebastián Botía\n[Analista de\nRequisitos]" as SB #0E8A7D;line:0B5E55
 actor "Jean Delgado\n[Diseñador\nde Datos]" as JD #B4443C;line:7A2E20
 actor "Juan Eguis\n[Desarrollador\nPrincipal]" as JE #56636F;line:3C4650
 actor "Mauricio Otero\n[Validación\ny Calidad]" as MO #2E7D4F;line:1C5132
 
 package "Arquitectura y Gobernanza" as PJ1 #F7FAFB;line:0F2B46 {
-  rectangle "M1: API Gateway\n[JWT · RBAC · Rate Limit]" as M1 #0F2B46;text:FFF
+  rectangle "M1: API Gateway\n[JWT · RBAC · Rate Limit]\nimplementa Eguis · define Aguilar" as M1 #0F2B46;text:FFF
   rectangle "ADRs + Custodia\nArquitectónica" as ADR #14283E;text:FFF;line:3C5876
   M1 -[hidden]right- ADR
 }
@@ -35,24 +37,26 @@ package "Modelo de Datos" as PJ3 #FDF4F2;line:B4443C {
   BDD -[hidden]right- MDL
 }
 
-package "Fase 3 · Bloques A–D (Implementación)" as PJ4 #F7F8FA;line:56636F {
+package "Fase 3 · Bloques A–D (Implementación — Eguis)" as PJ4 #F7F8FA;line:56636F {
   rectangle "M2: ServicioCatalogo\n[CQRS · Caché]" as M2 #0E8A7D;text:FFF
   rectangle "M3: ServicioReservas\n[Saga · Outbox]" as M3 #E8614D;text:FFF
+  rectangle "M4: ServicioPrestadores\n[RF-03 · RF-04]" as M4 #56636F;text:FFF
   rectangle "M7: ServicioIdentidad\n[RF-08 · MFA]" as M7 #0F2B46;text:FFF
   rectangle "M5: ServicioIntegración\n[RF-02 · CB]" as M5 #E8A13D;text:FFF
+  rectangle "M10: ServicioNotificaciones\n[RF-12 · Bloques B/C]" as M10 #E8A13D;text:FFF
   M2 -[hidden]right- M3
-  M3 -[hidden]right- M7
+  M3 -[hidden]right- M4
+  M4 -[hidden]right- M7
   M7 -[hidden]right- M5
+  M5 -[hidden]right- M10
 }
 
-package "Fase 3 · Bloque E" as BE #FFF9F5;line:E8614D {
+package "Fase 3 · Bloque E (Eguis + Delgado: modelo de datos)" as BE #FFF9F5;line:E8614D {
   rectangle "M6: ServicioIA\n[RD-03 · RF-07]" as M6 #E8614D;text:FFF
   rectangle "M8: ServicioAmbiental\n[RF-13]" as M8 #2E7D4F;text:FFF
   rectangle "M9: ServicioReportes\n[RF-09]" as M9 #56636F;text:FFF
-  rectangle "M10: ServicioNotificaciones\n[RD-06 · RF-12]" as M10 #E8A13D;text:FFF
   M6 -[hidden]right- M8
   M8 -[hidden]right- M9
-  M9 -[hidden]right- M10
 }
 
 package "Validación y Calidad · Fase 4" as PJ5 #F4F9F4;line:2E7D4F {
@@ -88,7 +92,8 @@ PJ5 -[hidden]left- MO
 
 legend right
   <b>Trazabilidad ERS v3.0</b>
-  Roles: §2.7 · Bloques A–F: §2.8.3
+  Roles: §2.7 · Bloques: §2.8.3 (B = Catálogo y prestadores;
+  E = Inteligencia, reportes y sostenibilidad)
   Fase 3 = Eguis (con Delgado en datos) · Fase 4 = Otero · RD-04 (Git)
 endlegend
 @enduml
