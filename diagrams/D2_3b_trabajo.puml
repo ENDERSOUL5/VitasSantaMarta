@@ -1,0 +1,94 @@
+@startuml D2_3b_trabajo
+' Figura 2.3b — Vista de Asignación de Trabajo: módulos -> responsables
+' según los roles del ERS VITASMARTA v3.0 (sección 2.7) y el plan por
+' bloques de la sección 2.8.3.
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam ArrowColor #56636F
+skinparam ArrowThickness 1.3
+skinparam nodesep 24
+skinparam ranksep 36
+skinparam packagePadding 10
+
+actor "Jose Aguilar\n[Líder Técnico /\nArquitecto]" as JA #0F2B46;line:0B1B2C
+actor "Sebastian Botia\n[Analista de\nRequisitos]" as SB #0E8A7D;line:0B5E55
+actor "Jean Delgado\n[Diseñador\nde Datos]" as JD #B4443C;line:7A2E20
+actor "Juan Eguis\n[Desarrollador\nPrincipal]" as JE #56636F;line:3C4650
+actor "Mauricio Otero\n[Validación\ny Calidad]" as MO #2E7D4F;line:1C5132
+
+package "Arquitectura y Gobernanza" as PJ1 #F7FAFB;line:0F2B46 {
+  rectangle "M1: API Gateway\n[JWT · RBAC · Rate Limit]" as M1 #0F2B46;text:FFF
+  rectangle "ADRs + Custodia\nArquitectónica" as ADR #14283E;text:FFF;line:3C5876
+  M1 -[hidden]right- ADR
+}
+
+package "Requisitos y Trazabilidad" as PJ2 #F4F9F4;line:0E8A7D {
+  rectangle "Matriz RF ↔ CU ↔ ADR" as TRZ #0B6E63;text:FFF
+  rectangle "ERS v3.0" as ERS #0E8A7D;text:FFF
+  TRZ -[hidden]right- ERS
+}
+
+package "Modelo de Datos" as PJ3 #FDF4F2;line:B4443C {
+  rectangle "Persistencia Políglota\n[RD-02 · RD-13]" as BDD #E8614D;text:FFF
+  rectangle "Modelo de Dominio\n[RF-04 · RF-06]" as MDL #B4443C;text:FFF
+  BDD -[hidden]right- MDL
+}
+
+package "Fase 3 · Bloques A–D (Implementación)" as PJ4 #F7F8FA;line:56636F {
+  rectangle "M2: ServicioCatalogo\n[CQRS · Caché]" as M2 #0E8A7D;text:FFF
+  rectangle "M3: ServicioReservas\n[Saga · Outbox]" as M3 #E8614D;text:FFF
+  rectangle "M7: ServicioIdentidad\n[RF-08 · MFA]" as M7 #0F2B46;text:FFF
+  rectangle "M5: ServicioIntegración\n[RF-02 · CB]" as M5 #E8A13D;text:FFF
+  M2 -[hidden]right- M3
+  M3 -[hidden]right- M7
+  M7 -[hidden]right- M5
+}
+
+package "Fase 3 · Bloque E" as BE #FFF9F5;line:E8614D {
+  rectangle "M6: ServicioIA\n[RD-03 · RF-07]" as M6 #E8614D;text:FFF
+  rectangle "M8: ServicioAmbiental\n[RF-13]" as M8 #2E7D4F;text:FFF
+  rectangle "M9: ServicioReportes\n[RF-09]" as M9 #56636F;text:FFF
+  rectangle "M10: ServicioNotificaciones\n[RD-06 · RF-12]" as M10 #E8A13D;text:FFF
+  M6 -[hidden]right- M8
+  M8 -[hidden]right- M9
+  M9 -[hidden]right- M10
+}
+
+package "Validación y Calidad · Fase 4" as PJ5 #F4F9F4;line:2E7D4F {
+  rectangle "Pruebas de Atributos\nde Calidad [RNF-01..08]" as VC #2E7D4F;text:FFF
+  rectangle "Evidencias SLI/SLO" as EV #43A047;text:FFF
+  VC -[hidden]right- EV
+}
+
+JA -right-> PJ1 : assigned-to
+SB -right-> PJ2 : assigned-to
+JD -right-> PJ3 : assigned-to
+JE -right-> PJ4 : assigned-to
+JE .[#E8614D].> BE : «co-implementa»
+JD .[#B4443C].> BE
+MO -right-> PJ5 : assigned-to
+
+JA -[hidden]down- SB
+SB -[hidden]down- JD
+JD -[hidden]down- JE
+JE -[hidden]down- MO
+
+PJ1 -[hidden]down- PJ2
+PJ2 -[hidden]down- PJ3
+PJ3 -[hidden]down- PJ4
+PJ4 -[hidden]down- BE
+BE -[hidden]down- PJ5
+
+PJ1 -[hidden]left- JA
+PJ2 -[hidden]left- SB
+PJ3 -[hidden]left- JD
+PJ4 -[hidden]left- JE
+PJ5 -[hidden]left- MO
+
+legend right
+  <b>Trazabilidad ERS v3.0</b>
+  Roles: §2.7 · Bloques A–F: §2.8.3
+  Fase 3 = Eguis (con Delgado en datos) · Fase 4 = Otero · RD-04 (Git)
+endlegend
+@enduml

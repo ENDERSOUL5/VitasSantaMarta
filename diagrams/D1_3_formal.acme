@@ -1,0 +1,77 @@
+// ============================================================
+// VITASMARTA · ACME ADL · Motor de Recomendación IA
+// Aspecto: ServicioIA -> ServicioCatalogo (Punto 1.3)
+// Base: ERS VITASMARTA v3.0 (RD-03, RF-07, RF-07-8, RNF-03, RD-16)
+// Bass, Clements y Kazman, Cap. 22.3 — Notación Formal
+// Validable sintácticamente en AcmeStudio (CMU)
+// ============================================================
+
+System VITASMARTARecommendationSystem = {
+
+  // COMPONENTES
+
+  Component ServicioIA = {
+    Port solicitud_in = { };  // Puerto provisto: recibe solicitud de recomendación
+    Port catalogo_req = { };  // Puerto requerido: solicita atractivos al catálogo
+    Port perfil_req = { };    // Puerto requerido: lee preferencias de usuario
+    Port sos_req = { };       // Puerto requerido: consulta capacidad de carga
+    Port evento_out = { };    // Puerto de salida: publica RecomendacionGenerada
+
+    Property responsabilidad : string = "Motor colaborativo + basado en contenido";
+    Property fallback : boolean = true;   // RF-07-8: degradación controlada activa
+    Property explicable : boolean = true; // RF-07-3: explicación por recomendación
+  };
+
+  Component ServicioCatalogo = {
+    Port atractivos_out = { }; // Puerto provisto: expone atractivos activos
+    Port cache_port = { };     // Puerto interno: accede a Redis TTL = 15 min
+
+    Property estilo : string = "CQRS-ReadModel";
+    Property replicas : int = 3; // RNF-01: escalado horizontal en pico
+  };
+
+  Component ServicioPerfil = {
+    Port perfil_out = { }; // Puerto provisto: expone preferencias e historial
+    Property aislamiento : string = "multi-tenant";
+  };
+
+  Component BusMensajes = {
+    Port entrada = { }; // Puerto entrada: recibe eventos de dominio
+    Port salida = { };  // Puerto salida: entrega a consumidores
+    Property patron : string = "TransactionalOutbox-RD16";
+    Property entrega : string = "at-least-once";
+  };
+
+  // CONECTORES
+
+  Connector RestCallReturn = {
+    Role cliente = { }; // Rol: componente que inicia la llamada síncrona
+    Role servidor = { }; // Rol: componente que responde
+    Property protocolo : string = "REST/JSON-HTTPS";
+    Property timeout_ms : int = 2000; // RNF-03: p95 <= 2 s
+    Property idempotente : boolean = true; // RF-05-7
+  };
+
+  Connector EventPublisher = {
+    Role productor = { }; // Rol: componente que publica el evento
+    Role broker = { };    // Rol: bus de mensajes receptor
+    Property patron : string = "Outbox-async";
+    Property garantia : string = "at-least-once";
+  };
+
+  // ADJUNTOS (Attachments)
+
+  Attachments {
+    // ServicioIA llama síncronamente al catálogo para obtener atractivos
+    ServicioIA.catalogo_req to RestCallReturn.cliente;
+    ServicioCatalogo.atractivos_out to RestCallReturn.servidor;
+
+    // ServicioIA publica RecomendacionGenerada al bus (asíncrono)
+    ServicioIA.evento_out to EventPublisher.productor;
+    BusMensajes.entrada to EventPublisher.broker;
+
+    // ServicioIA llama síncronamente al perfil de usuario
+    ServicioIA.perfil_req to RestCallReturn.cliente;
+    ServicioPerfil.perfil_out to RestCallReturn.servidor;
+  }
+};

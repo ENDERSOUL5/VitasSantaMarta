@@ -1,0 +1,87 @@
+@startuml D2_3a_alocacion
+' Figura 2.3a — Vista de Alocación / Despliegue: los 10 módulos (M1-M10)
+' alocados a nodos cloud reales; persistencia políglota (RD-02) y
+' «migrates-to» para recuperación ante fallos (RNF-02). La contención
+' dentro de un nodo expresa allocated-to (Bass, Tabla 22.3). Coincide 1:1
+' con la tabla de mapeo del punto 5.1.
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontSize 12
+skinparam ArrowThickness 1.3
+skinparam nodesep 16
+skinparam ranksep 38
+
+node "Plataforma cloud\nRender · Supabase · Upstash · CloudAMQP · Cloudflare" as CLOUD #F7FAFB;line:0E8A7D {
+
+  node "Edge / CDN" as EDGE #FFF;line:0E8A7D {
+    node "CDN\n(Cloudflare)" as CDN #E6F4F6;line:0E8A7D
+  }
+
+  node "Capa de Acceso API" as API #FFF;line:0E8A7D {
+    node "API Gateway\n×N · JWT · RBAC" as GW #0F2B46;text:FFF
+    node "Respaldo Gateway\n«standby»" as GWS #FFF;line:B4443C
+    GW -[hidden]right- GWS
+  }
+
+  node "Services Tier (Render · contenedores «Docker»)" as SVC #FFF;line:0E8A7D {
+    node "svc-catalogo\n×3 [CQRS]" as S2 #0E8A7D;text:FFF
+    node "svc-reservas\n×2 [RD-16·17]" as S3 #E8614D;text:FFF
+    node "svc-prestadores\n×1 [multi-tenant]" as S4 #56636F;text:FFF
+    node "svc-integración\n×1 [RF-02·ACL]" as S5 #FFF6E3;line:E8A13D
+    node "svc-ia\n×1 [RF-07]" as S6 #FBEAE4;line:E8614D
+    node "svc-identidad\n×1 [RF-08·JWT]" as S7 #0F2B46;text:FFF
+    node "svc-ambiental\n×1 [RF-13]" as S8 #E7F2EA;line:2E7D4F
+    node "svc-reportes\n×1 [RF-09]" as S9 #56636F;text:FFF
+    node "svc-notificaciones\n×1 [RD-06]" as S10 #E8A13D;text:FFF
+  }
+
+  node "Data Tier" as DATA #FFF;line:0E8A7D {
+    node "Object Storage\nMultimedia (R2)" as D1 #FFF;line:9AA6B2
+    database "PostgreSQL\nBD Catálogo" as D2 #E6F4F6;line:0E8A7D
+    database "Redis\nCaché + Soft Lock" as DR #FFF6E3;line:E8A13D
+    database "PostgreSQL\nBD Prestadores" as D4 #56636F;text:FFF
+    database "PostgreSQL\nBD Usuarios" as D7 #0F2B46;text:FFF
+    database "PostgreSQL\nBD Reservas" as D3 #E8614D;text:FFF
+    database "PostgreSQL\nBD Reportes" as D9 #56636F;text:FFF
+    queue "RabbitMQ\nBus IC-03" as DQ #FFF6E3;line:E8A13D
+  }
+}
+
+node "Sistemas Externos" as EXT #FFF;line:56636F {
+  node "APIs Operadores\n(RF-02)" as E3 #FFF;line:9AA6B2
+  node "OpenStreetMap\n(IS-03)" as E1 #FFF;line:9AA6B2
+  node "SendGrid\n(IS-04)" as E2 #FFF;line:9AA6B2
+}
+
+' ── Acceso y recuperación ante fallos ──────────────────────────
+CDN -down-> GW : HTTPS
+GW -[#B4443C,dashed]right-> GWS : «migrates-to»\n(RNF-02)
+GW -down-> SVC : HTTPS · REST\n(JWT · RBAC)
+
+' ── Persistencia: cada servicio con su almacén (RD-02) ─────────
+S2 -down-> D1 : multimedia
+S2 -[#0E8A7D]-> D2 : stored-in
+S2 -[#E8A13D]-> DR : caché
+S3 -[#E8614D]-> D3 : stored-in
+S3 -[#E8614D]-> DQ : Outbox
+S4 -down-> D4 : stored-in
+S7 -down-> D7 : stored-in
+S9 -down-> D9 : stored-in
+S6 -[#E8A13D]-> DR : cache-read
+
+' ── Consumidores del bus y sistemas externos ───────────────────
+DQ -up-> S10 : consume
+DQ -[#9AA6B2]-> S9 : consume
+S10 -[#9AA6B2]down-> E2 : email
+S5 -[#E8A13D]down-> E3 : REST
+S5 -[#E8A13D]down-> E1 : REST
+
+legend right
+  <b>Relaciones de alocación (Bass, Tabla 22.3)</b>
+  contención en un nodo = allocated-to · stored-in = dato → almacén
+  «migrates-to» — recuperación ante fallos entre nodos (RNF-02)
+
+  <b>Trazabilidad ERS v3.0</b>
+  RD-02 (persistencia políglota) · RD-16 (Outbox) · RF-02 / IS-03 / IS-04
+endlegend
+@enduml

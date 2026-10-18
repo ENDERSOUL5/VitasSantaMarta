@@ -1,0 +1,69 @@
+@startuml D2_2_cc
+' Figura 2.2 — Vista C&C: alta demanda de consultas y recomendaciones
+' personalizadas en temporada vacacional (pico objetivo 5.000 usuarios,
+' RNF-01). Conectores tipificados y trazabilidad ERS v3.0.
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam ArrowThickness 1.4
+skinparam nodesep 34
+skinparam ranksep 48
+
+<style>
+.discontinuo {
+  LineStyle 3;
+  LineThickness 1.2;
+}
+</style>
+
+actor "«actor»\nTurista\n(Web / Móvil)" as T #E6F4F6;line:0E8A7D
+
+rectangle "API Gateway (×N escala horizontal)" as GWB #0F2B46;text:FFF {
+  rectangle "Load Balancer" as LB #14283E;text:FFF;line:3C5876
+  rectangle "Gateway 1" as G1 #14283E;text:FFF;line:3C5876
+  rectangle "Gateway 2" as G2 #14283E;text:FFF;line:3C5876
+  LB -[hidden]right- G1
+  G1 -[hidden]right- G2
+}
+
+rectangle "svc-ia (escala independiente)" as IBX #FDF1EE;line:E8614D {
+  rectangle "IA Engine\n[Colaborativo]" as ENG #FFF;line:E8614D
+  rectangle "FallbackHandler\n[RF-07-8]" as FBH #FFF;line:E8614D
+  ENG -[hidden]right- FBH
+}
+
+rectangle "svc-catalogo (×3 réplicas lectura)" as CBX #0E8A7D;text:FFF {
+  rectangle "Réplica 1" as R1 #0B6E63;text:FFF;line:0A5C53
+  rectangle "Réplica 2" as R2 #0B6E63;text:FFF;line:0A5C53
+  rectangle "Réplica 3" as R3 #0B6E63;text:FFF;line:0A5C53
+  R1 -[hidden]right- R2
+  R2 -[hidden]right- R3
+}
+
+rectangle "svc-ambiental\n[RF-13]" as SOS #E7F2EA;line:2E7D4F
+queue "«queue»\nRabbitMQ" as MQ #FFF6E3;line:E8A13D
+rectangle "«cache»\nRedis · TTL 15 min" as RC #FFF6E3;line:E8A13D
+database "«db»\nPostgreSQL\nréplica lectura" as PGR #E6F4F6;line:0E8A7D
+
+T -down-> LB : HTTPS · TLS (IC-01)
+GWB -down-> IBX : «call-return»\nREST/JSON
+GWB -down-> CBX : «call-return»\nREST/JSON
+
+ENG -down-> R3 : «call-return»\natractivos
+ENG .[#E8A13D].> FBH : «fallback»
+ENG -[#E8A13D]-> MQ : «evento» Outbox\nRD-16
+ENG -[#2E7D4F]-> SOS : «call-return»\ncapacidad
+
+IBX -[#E8A13D]-> RC : «cache-read»
+CBX -[#E8A13D]-> RC : «cache-read»
+CBX -[#0E8A7D]-> PGR : «query» SQL
+
+legend right
+  <b>Tipos de conector</b>
+  «call-return» REST/JSON (síncrono) · «evento» Outbox RD-16 (asíncrono)
+  «cache-read» Redis · «query» SQL · «fallback» degradación
+
+  <b>Trazabilidad ERS v3.0</b>
+  RNF-01 (pico 5.000 · p95 ≤ 3 s) · RNF-03 (≤ 2 s) · IC-01 (TLS 1.2+)
+endlegend
+@enduml

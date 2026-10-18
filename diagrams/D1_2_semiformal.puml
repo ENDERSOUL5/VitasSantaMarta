@@ -1,0 +1,70 @@
+@startuml D1_2_semiformal
+' Figura 1.2 — Notación semiformal UML 2.x: Motor de Recomendación IA
+' Interfaces provistas / requeridas y relaciones «use» / «fallback».
+' Base: ERS VITASMARTA v3.0 (RF-07-1/3/8, RF-13-7, RD-03).
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontSize 12
+skinparam ArrowThickness 1.4
+skinparam nodesep 34
+skinparam ranksep 44
+
+component "«component»\nAPIGateway" as GW #0F2B46;text:FFF
+
+component "«component»\nServicioRecomendacion" as SR #E8614D;text:FFF {
+  rectangle "«provided»\nIRecommendation" as IRE #F5C6BC;line:7A2E20
+  rectangle "RecommendationEngine\n[Colaborativo + Contenido]" as ENG #FFF;line:7A2E20
+  rectangle "FallbackHandler\n[RF-07-8]" as FBH #FFF;line:7A2E20
+  rectangle "ExplainabilityModule\n[RF-07-3]" as EXM #FFF;line:7A2E20
+  rectangle "«required»\nICatalogo" as RC1 #F5C6BC;line:7A2E20
+  rectangle "«required»\nIPerfil" as RC2 #F5C6BC;line:7A2E20
+  rectangle "«required»\nISostenibilidad" as RC3 #F5C6BC;line:7A2E20
+  IRE -[hidden]down- ENG
+  ENG -[hidden]down- FBH
+  FBH -[hidden]right- EXM
+  FBH -[hidden]down- RC1
+  RC1 -[hidden]right- RC2
+  RC2 -[hidden]right- RC3
+}
+
+component "«component»\nServicioCatalogo" as SC #0E8A7D;text:FFF {
+  rectangle "«provided»\nICatalogo" as PV1 #CDEBE4;line:0B5E55
+  rectangle "CatalogoService\n[CQRS]" as CS #FFF;line:0B5E55
+}
+
+component "«component»\nServicioPerfil" as SP #3C4650;text:FFF {
+  rectangle "«provided»\nIPerfil" as PV2 #D5DAE0;line:22262B
+  rectangle "PerfilService\n[Preferencias + Historial]" as PS #FFF;line:22262B
+}
+
+component "«component»\nServicioSostenibilidad" as SS #2E7D4F;text:FFF {
+  rectangle "«provided»\nISostenibilidad" as PV3 #CBE3D3;line:1C5132
+  rectangle "CapacidadCargaMonitor\n[RF-13]" as CM #FFF;line:1C5132
+}
+
+GW -down-> IRE : GET /recommendations
+IRE -down-> ENG
+ENG .[#E8A13D].> FBH : «fallback»
+ENG -[#7A2E20]-> EXM : explica
+
+RC1 .[#E8614D].> PV1 : «use»
+RC2 .[#E8614D].> PV2 : «use»
+RC3 .[#E8614D].> PV3 : «use»
+
+PV1 -[#0B5E55]-> CS
+PV2 -[#22262B]-> PS
+PV3 -[#1C5132]-> CM
+
+GW -[hidden]down- SR
+SC -[hidden]right- SP
+SP -[hidden]right- SS
+RC1 -[hidden]down- SC
+RC2 -[hidden]down- SP
+RC3 -[hidden]down- SS
+
+legend right
+  <b>Trazabilidad ERS v3.0</b>
+  RD-03 (IA independiente) · RF-07-1 (motor híbrido)
+  RF-07-3 (explicable) · RF-07-8 (fallback) · RF-13-7 (capacidad)
+endlegend
+@enduml

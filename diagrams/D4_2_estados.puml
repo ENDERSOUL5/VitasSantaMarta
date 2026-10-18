@@ -1,0 +1,50 @@
+@startuml D4_2_estados
+' Figura 4.2 — Máquina de Estados: ProcesoRecomendacion
+' 11 estados: 8 intermedios + 3 terminales (ENTREGADA, AUTH_FALLIDA,
+' DEGRADADA). Sin estados huérfanos.
+' Base: ERS VITASMARTA v3.0 (RF-07-8, RF-07-16, RF-08-3, RF-13-11).
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam StateBorderColor #0E8A7D
+skinparam StateBackgroundColor #E6F4F6
+skinparam StateFontColor #0F2B46
+skinparam ArrowColor #0E8A7D
+skinparam ArrowThickness 1.4
+
+title Máquina de Estados · ProcesoRecomendacion · RF-07, RF-07-8
+
+[*] --> RECIBIDA : solicitudRecibida()
+state RECIBIDA : Solicitud registrada\n(userId, context)
+state AUTENTICANDO : Valida JWT · RBAC\n(RF-08-3)
+state CONSULTANDO_CATALOGO : CQRS\natractivos activos
+state EVALUANDO_CARGA : Umbrales 80/85/90 %\n(RF-13-11)
+state CALCULANDO : Colaborativo +\ncontenido
+state FALLBACK #FFF6E3 : Reglas simples\n(RF-07-8)
+state EXPLICANDO : Explicación\n(RF-07-3)
+state CACHEANDO : Redis · TTL 300 s
+state ENTREGADA #DFF0DF : 200 OK
+state AUTH_FALLIDA #FBEAE4 : 401
+state DEGRADADA #FFF6E3 : 206 (fallback)
+
+RECIBIDA --> AUTENTICANDO : iniciarAuth(jwt)
+AUTENTICANDO --> CONSULTANDO_CATALOGO : authOk
+AUTENTICANDO --> AUTH_FALLIDA : authFailed [401]
+CONSULTANDO_CATALOGO --> EVALUANDO_CARGA : catalogoRecibido()
+EVALUANDO_CARGA --> CALCULANDO : capacidadVerificada()
+CALCULANDO --> EXPLICANDO : calculoOk [items ≥ 1]
+CALCULANDO --> FALLBACK : iaTimeout OR items = 0
+FALLBACK --> EXPLICANDO : fallbackCalculado()
+FALLBACK --> DEGRADADA : fallbackFailed [206]
+EXPLICANDO --> CACHEANDO : explicacionGenerada()
+CACHEANDO --> ENTREGADA : cachedOk [200]
+
+ENTREGADA --> [*]
+AUTH_FALLIDA --> [*]
+DEGRADADA --> [*]
+
+legend right
+  <b>Trazabilidad ERS v3.0</b>
+  RF-07-8 / RF-07-16 (fallback técnico y cold-start)
+  RF-08-3 (RBAC · JWT) · RF-13-11 (umbrales) · REG-03-3 (explicación)
+endlegend
+@enduml

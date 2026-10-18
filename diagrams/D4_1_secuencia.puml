@@ -1,0 +1,76 @@
+@startuml D4_1_secuencia
+' Figura 4.1 — Diagrama de Secuencia: Recomendaciones personalizadas en
+' alta demanda (7 lifelines, fragmento alt cache-hit/cache-miss).
+' Base: ERS VITASMARTA v3.0 (RF-07, RNF-01, RNF-03, RD-11, RNF-06-3).
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam sequenceArrowThickness 1.5
+skinparam roundcorner 6
+skinparam ParticipantBorderColor #0E8A7D
+skinparam ParticipantBackgroundColor #E6F4F6
+skinparam ParticipantFontColor #0F2B46
+skinparam NoteBorderColor #E8A13D
+skinparam NoteBackgroundColor #FFF6E3
+skinparam SequenceGroupBorderColor #0E8A7D
+skinparam SequenceGroupHeaderFontColor #0E8A7D
+
+title Recomendaciones Personalizadas · Alta Demanda (RF-07 · RNF-01 · RNF-03)
+
+actor "Turista" as T #E6F4F6
+participant "APIGateway" as GW #D9E2EA
+participant "ServicioIdentidad" as AUTH #ECEFF1
+participant "ServicioIA" as IA #FBEAE4
+participant "ServicioCatalogo" as CAT #E6F4F6
+participant "ServicioAmbiental" as SOS #E7F2EA
+participant "RedisCache" as REDIS #FFF6E3
+
+T -> GW : GET /recommendations\nBearer JWT · X-Correlation-Id (RD-11)
+activate GW
+GW -> AUTH : validateToken(jwt)
+activate AUTH
+AUTH --> GW : TokenClaims
+deactivate AUTH
+GW -> IA : recommend(userId, context)
+activate IA
+
+IA -> REDIS : GET recom:{userId}
+activate REDIS
+alt Cache HIT (TTL 300 s)
+  REDIS --> IA : RecomendacionDTO[]
+  deactivate REDIS
+else Cache MISS
+  REDIS --> IA : null
+  deactivate REDIS
+  IA -> CAT : getAttractions(active)
+  activate CAT
+  CAT --> IA : AtractivoDTO[] (CQRS)
+  deactivate CAT
+  IA -> SOS : getCapacity(ids)
+  activate SOS
+  SOS --> IA : CapacidadStatus[]\n(umbrales 80/85/90 %)
+  deactivate SOS
+  note over IA : calcularPuntuacion()\ncolaborativo + contenido
+  IA -> REDIS : SET recom:{userId} · TTL 300 s
+  activate REDIS
+  REDIS --> IA : OK
+  deactivate REDIS
+end
+
+IA --> GW : Recomendaciones + explicaciones
+deactivate IA
+GW --> T : 200 OK · p95 ≤ 2 s (RNF-03)
+deactivate GW
+
+note right of T
+  Degradación controlada (RF-07-8):
+  si ServicioIA excede el timeout,
+  FallbackHandler aplica reglas
+  simples sin interrumpir el flujo
+end note
+
+legend right
+  <b>Trazabilidad ERS v3.0</b>
+  RF-07-1/2 (motor híbrido) · RF-07-3 (explicación) · RF-07-8/10 (fallback)
+  RF-13-11 (umbrales 80/85/90 %) · RD-11 (correlación) · RNF-06-3 (OpenAPI)
+endlegend
+@enduml

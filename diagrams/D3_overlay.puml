@@ -1,0 +1,57 @@
+@startuml D3_overlay
+' Figura 3 — Vista Combinada (Overlay): C&C runtime + nodos de despliegue
+' para el flujo principal (Gateway -> Catálogo / Reservas / IA). Limitada a
+' seis componentes para no saturar la lectura (Bass, Cap. 22.4, p. 340).
+' Base: ERS VITASMARTA v3.0 (RNF-01, RNF-02, RD-16).
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam ArrowThickness 1.3
+skinparam nodesep 32
+skinparam ranksep 50
+
+<style>
+.discontinuo {
+  LineStyle 3;
+  LineThickness 1.2;
+}
+</style>
+
+node "Externos" <<límite externo>> as EXT #FFF;line:56636F {
+  usecase "Fuentes\nExternas\n(RF-02)" as FE #F0F2F4;line:56636F
+}
+
+node "Render.com" as N1 #F7FAFB;line:0F2B46 {
+  component "«C&C»\nAPI Gateway\n[Web Service]" as GW #14283E;text:FFF;line:0B1B2C
+  component "«C&C»\nsvc-catalogo ×3\n[Container]" as CAT #0E8A7D;text:FFF;line:0B5E55
+}
+
+node "Render.com (services)" as N2 #FDF4F2;line:B4443C {
+  component "«C&C»\nsvc-reservas ×2\n[Container]" as RES #E8614D;text:FFF;line:B4443C
+  component "«C&C»\nsvc-ia ×1\n[Worker]" as IA #FBEAE4;line:E8614D
+}
+
+node "Datos gestionados\nSupabase · Upstash · CloudAMQP" as N3 #F4F9F9;line:0E8A7D {
+  database "«stored-in»\nPostgreSQL\nBD Reservas" as PG2 #E8614D;text:FFF;line:B4443C
+  queue "«stored-in»\nRabbitMQ" as MQ #FFF6E3;line:E8A13D
+  database "«stored-in»\nRedis" as RD #FFF6E3;line:E8A13D
+  database "«stored-in»\nPostgreSQL\nBD Catálogo" as PG1 #E6F4F6;line:0E8A7D
+}
+
+FE .down.> GW : REST ACL
+GW -right-> CAT : REST/JSON\n«call-return»
+GW -down-> RES : REST/JSON\n«call-return»
+GW .[#E8614D].> IA : REST/JSON\n«call-return»
+RES -[#E8614D]-> PG2
+RES -[#E8A13D].> MQ : «evento»\nOutbox RD-16
+CAT -[#E8A13D]-> RD
+CAT -[#0E8A7D]-> PG1
+
+legend right
+  <b>Lectura del overlay</b>
+  Línea continua = interacción runtime · Discontinua = alocación / persistencia
+
+  <b>Trazabilidad ERS v3.0</b>
+  RNF-01 (réplicas) · RNF-02 (nodos independientes, migrates-to) · RD-16
+endlegend
+@enduml

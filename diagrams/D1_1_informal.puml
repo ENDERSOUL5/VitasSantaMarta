@@ -1,0 +1,53 @@
+@startuml D1_1_informal
+' Figura 1.1 — Notación informal (cajas y líneas): Motor de Recomendación IA
+' Base: ERS VITASMARTA v3.0 (RF-07, RF-13, RD-03, RD-06).
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontSize 12
+skinparam ArrowThickness 1.4
+skinparam ArrowColor #1A2430
+skinparam nodesep 42
+skinparam ranksep 46
+
+<style>
+.discontinuo {
+  LineStyle 3;
+  LineThickness 1.2;
+}
+</style>
+
+actor "Turista /\nVisitante" as T #E6F4F6;line:0E8A7D
+
+rectangle "API Gateway\n(Punto de Entrada)" as GW #0F2B46;text:FFF
+rectangle "Motor de\nRecomendación IA" as IA #E8614D;text:FFF
+rectangle "Servicio de\nCatálogo Turístico" as CAT #0E8A7D;text:FFF
+rectangle "Servicio de\nPerfiles de Usuario" as PER #F0F2F4;line:56636F
+rectangle "Módulo de\nSostenibilidad\n(Capacidad de Carga)" as SOS #E7F2EA;line:2E7D4F
+rectangle "Bus de Mensajes\n(RabbitMQ)" <<asíncrono>> as BUS #FFF6E3;line:E8A13D
+
+database "BD Catálogo\n(PostgreSQL)" as BDC #E6F4F6;line:0E8A7D
+database "Caché\n(Redis)" as CH #FFF6E3;line:E8A13D
+database "BD Perfiles\n(PostgreSQL)" as BDP #F0F2F4;line:56636F
+
+T -down-> GW : ① solicita recomendación
+GW -up[#1A2430,dashed].> T : ② lista explicada
+GW -down-> IA : GET /recommendations
+
+IA -[#E8614D]-> CAT : consulta atractivos
+IA -[#E8614D]-> PER : lee preferencias
+IA -[#E8614D]-> SOS : verifica capacidad
+IA .[#E8614D].> BUS : publica evento
+
+CAT -[#56636F]-> BDC
+CAT -[#E8A13D]-> CH : TTL 15 min
+PER -[#56636F]-> BDP
+
+T -[hidden]down- GW
+GW -[hidden]down- IA
+
+legend right
+  <b>Trazabilidad ERS v3.0</b>
+  RF-07 (recomendaciones IA) · RF-13 (capacidad de carga)
+  RD-03 (IA independiente) · RD-06 (notificaciones asíncronas)
+endlegend
+@enduml

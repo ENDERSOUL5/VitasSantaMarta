@@ -1,0 +1,49 @@
+@startuml D2_4b_escalabilidad
+' Figura 2.4b — Vista de Calidad: Escalabilidad (RNF-01: objetivo de
+' diseño 5.000 usuarios concurrentes con p95 ≤ 3 s; validación piloto
+' con carga simulada de 500 usuarios, RNF-01-2).
+' Stakeholders: desarrollo, arquitecto, analista de calidad.
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam ArrowThickness 1.3
+skinparam nodesep 28
+skinparam ranksep 44
+
+<style>
+.discontinuo {
+  LineStyle 3;
+  LineThickness 1.2;
+}
+</style>
+
+usecase "Pico temporada\n5.000 usuarios\n(≈10× carga habitual)" as U #E8614D;text:FFF
+
+rectangle "Elementos con rol en ESCALABILIDAD (RNF-01) — p95 ≤ 3 s" as FR #FDF4F2;line:E8614D {
+  rectangle "Load Balancer\n[auto-scaling < 5 min]" as LB #0F2B46;text:FFF
+  rectangle "API Gateway ×N\n[stateless · RNF-01-1]" as GW #0F2B46;text:FFF
+  rectangle "svc-catalogo ×3\n[CQRS — solo lectura]" as CAT #0E8A7D;text:FFF
+  rectangle "svc-ia\n[escala independiente\nRNF-01-3]" as IA #FBEAE4;line:E8614D
+  rectangle "Métricas\n[req/s · p95 · CPU\nRNF-01-5]" as MET #E7F2EA;line:2E7D4F
+  queue "Redis Cluster\n[caché catálogo]" as RC #FFF6E3;line:E8A13D
+  database "BD Catálogo\n[read replicas]" as BD #E6F4F6;line:0E8A7D
+}
+
+U -down-> LB : pico de solicitudes
+LB -down-> GW
+GW -down-> CAT : GET /catalog\n(80 % del tráfico)
+GW -down-> IA : GET /recomend.
+GW .[#2E7D4F].> MET
+CAT -[#E8A13D]-> RC : «cache-read»\nhit > 90 %
+CAT -[#0E8A7D]-> BD : cache-miss\nSQL read
+
+note bottom of MET
+  Auto-scale si CPU > 70 %, en < 5 min
+end note
+
+legend right
+  <b>Trazabilidad ERS v3.0</b>
+  RNF-01-1..5 (escalado horizontal, componentes intensivos, métricas)
+  RNF-01-2 (objetivo 5.000 · validación piloto 500) · RNF-03-2 (caché)
+endlegend
+@enduml

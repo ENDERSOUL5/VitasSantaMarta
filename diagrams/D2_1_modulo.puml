@@ -1,0 +1,90 @@
+@startuml D2_1_modulo
+' Figura 2.1 — Vista de Módulo: 10 módulos de primer nivel + infraestructura
+' compartida. Relaciones Bass (Tabla 22.1): depends-on (sólida) y
+' depends-on «datos» (discontinua teal). Contención = is-part-of.
+' Base: ERS VITASMARTA v3.0, sección 3.4 (RD-01..RD-17).
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontSize 12
+skinparam ArrowColor #56636F
+skinparam ArrowThickness 1.4
+skinparam nodesep 28
+skinparam ranksep 48
+skinparam rectangleBorderThickness 1
+
+' ── Fila 1: acceso ──────────────────────────────────────────────
+rectangle "M1: API Gateway\n[RD-01 · JWT · RBAC]" as M1 #0F2B46;text:FFF
+
+' ── Fila 2: servicios de dominio ───────────────────────────────
+rectangle "M2: ServicioCatalogo\n[CQRS · Caché]" as M2 #0E8A7D;text:FFF
+rectangle "M3: ServicioReservas\n[RD-16 · RD-17]" as M3 #E8614D;text:FFF
+rectangle "M6: ServicioIA\n[RD-03 · RF-07]" as M6 #FBEAE4;line:E8614D
+rectangle "M4: ServicioPrestadores\n[Multi-tenant]" as M4 #56636F;text:FFF
+
+' ── Fila 3: servicios de soporte ───────────────────────────────
+rectangle "M5: ServicioIntegración\n[RF-02 · ACL · CB]" as M5 #FFF6E3;line:E8A13D
+rectangle "M7: ServicioIdentidad\n[RF-08 · OAuth2]" as M7 #0F2B46;text:FFF
+rectangle "M10: ServicioNotificaciones\n[RD-06 · Async]" as M10 #E8A13D;text:FFF
+rectangle "M9: ServicioReportes\n[RF-09]" as M9 #56636F;text:FFF
+rectangle "M8: ServicioAmbiental\n[RF-13]" as M8 #E7F2EA;line:2E7D4F
+
+' ── Fila 4: infraestructura compartida (is-part-of) ────────────
+package "Infraestructura Compartida (is-part-of)" as INF #F7FAFB;line:56636F {
+  rectangle "Caché\n(Redis)" as IC2 #FFF6E3;line:E8A13D
+  rectangle "BD Relacional\n(RD-02 · × dominio)" as IC5 #E6F4F6;line:0E8A7D
+  rectangle "Bus de Mensajes\n(IC-03 · Outbox)" as IC3 #FFF6E3;line:E8A13D
+  rectangle "Observabilidad\n(RD-07)" as IC4 #FFF;line:9AA6B2
+  rectangle "CDN /\nMultimedia" as IC1 #FFF;line:9AA6B2
+  IC2 -[hidden]right- IC5
+  IC5 -[hidden]right- IC3
+  IC3 -[hidden]right- IC4
+  IC4 -[hidden]right- IC1
+}
+
+' ── depends-on (sólidas) ───────────────────────────────────────
+M1 -down-> M3
+M1 -down-> M2
+M1 -down-> M4
+
+M3 -left-> M2
+M3 -right-> M6
+M3 -down-> M7
+
+M6 -left-> M2
+M6 -down-> M7
+M6 -down-> M8
+
+M2 -down-> M5
+M9 -up-> M3
+M9 -right-> M8
+
+' ── depends-on «datos» (discontinuas teal) ─────────────────────
+M2 -[#0E8A7D]down.> IC2
+M2 -[#0E8A7D]down.> IC5
+M3 -[#0E8A7D]down.> IC5
+M3 -[#0E8A7D]down.> IC3
+M7 -[#0E8A7D]down.> IC5
+M10 -[#0E8A7D]down.> IC3
+M9 -[#0E8A7D]down.> IC4
+
+' ── orden visual ───────────────────────────────────────────────
+M2 -[hidden]right- M3
+M3 -[hidden]right- M6
+M6 -[hidden]right- M4
+M5 -[hidden]right- M7
+M7 -[hidden]right- M10
+M10 -[hidden]right- M9
+M9 -[hidden]right- M8
+M3 -[hidden]down- M10
+
+legend right
+  <b>Relaciones (Bass, Tabla 22.1)</b>
+  ───  depends-on — uso entre módulos
+  ╌╌╌  depends-on «datos» — persistencia o publicación
+  ⊡    contención en el paquete = is-part-of
+
+  <b>Trazabilidad ERS v3.0</b>
+  RD-01/02/03/06/07 · RD-16/17 (Outbox + Saga)
+  RF-02 · RF-08 · RF-13
+endlegend
+@enduml

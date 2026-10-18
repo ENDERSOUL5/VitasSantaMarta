@@ -1,0 +1,79 @@
+@startuml D1_3_acme
+' Figura 1.3 — Especificación formal ACME ADL (representación gráfica):
+' 4 componentes, 2 conectores, puertos, roles y adjuntos del System
+' VITASMARTARecommendationSystem. Fuente textual: D1_3_formal.acme (repo).
+' Base: ERS VITASMARTA v3.0 (RD-03, RF-07, RNF-03, RD-16).
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam ArrowColor #56636F
+skinparam ArrowThickness 1.3
+skinparam nodesep 38
+skinparam ranksep 42
+skinparam rectangleBorderThickness 1
+
+package "System VITASMARTARecommendationSystem — ACME ADL" as SYS #FBFCFD;line:0F2B46 {
+
+  ' puertos sin adjunto (se declaran, no se conectan)
+  rectangle "solicitud_in" as pin #FBEAE4;line:E8614D
+  rectangle "sos_req" as psos #FBEAE4;line:E8614D
+
+  component "**ServicioIA**\n<size:9>[RD-03 · RF-07]</size>" as IA #FBEAE4;line:E8614D
+
+  ' puertos requeridos / de salida
+  rectangle "catalogo_req" as pcat #FBEAE4;line:E8614D
+  rectangle "perfil_req" as pper #FBEAE4;line:E8614D
+  rectangle "evento_out" as peve #FBEAE4;line:E8614D
+
+  rectangle "**«connector» RestCallReturn**\n<size:9>roles: cliente · servidor</size>\n<size:9>REST/JSON · timeout 2000 ms (RNF-03)</size>" as RCR #FFF;line:E8614D
+
+  rectangle "**«connector» EventPublisher**\n<size:9>roles: productor · broker</size>\n<size:9>Outbox · at-least-once (RD-16)</size>" as EVP #FFF;line:E8A13D
+
+  rectangle "atractivos_out" as patr #CDEBE4;line:0E8A7D
+  rectangle "perfil_out" as ppfo #D5DAE0;line:56636F
+  rectangle "entrada" as pent #FFF6E3;line:E8A13D
+
+  component "**ServicioCatalogo**\n<size:9>CQRS · réplicas = 3 (RNF-01)</size>" as CT #E6F4F6;line:0E8A7D
+
+  component "**ServicioPerfil**\n<size:9>multi-tenant</size>" as PF #F0F2F4;line:56636F
+
+  queue "**BusMensajes**\n<size:9>RD-16 · at-least-once</size>" as BUS #FFF6E3;line:E8A13D
+}
+
+' Adjunto ①: ServicioIA -> ServicioCatalogo (síncrono)
+IA -up- pin
+IA -up- psos
+pin -[hidden]right- psos
+
+IA -down- pcat
+IA -down- pper
+pcat -[hidden]right- pper
+
+pcat -down-> RCR : ① cliente
+RCR -down-> patr : ① servidor
+patr -down-> CT
+
+' Adjunto ③: ServicioIA -> ServicioPerfil (síncrono)
+pper -down-> RCR : ③ cliente
+RCR -down-> ppfo : ③ servidor
+ppfo -down-> PF
+
+' Adjunto ②: ServicioIA -> BusMensajes (asíncrono)
+IA -down- peve
+peve -down-> EVP : ② productor
+EVP -down-> pent : ② broker
+pent -down-> BUS
+
+' orden visual en tres columnas
+CT -[hidden]right- PF
+PF -[hidden]right- BUS
+
+legend right
+  <b>Adjuntos (puerto ↔ rol)</b>
+  ① catalogo_req ↔ cliente · atractivos_out ↔ servidor
+  ② evento_out ↔ productor · entrada ↔ broker
+  ③ perfil_req ↔ cliente · perfil_out ↔ servidor
+  Sin adjunto (uso interno): solicitud_in · sos_req · cache_port
+  Especificación textual: diagrams/D1_3_formal.acme (repo) · AcmeStudio
+endlegend
+@enduml
