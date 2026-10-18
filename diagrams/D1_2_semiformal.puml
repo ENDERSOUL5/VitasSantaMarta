@@ -1,70 +1,65 @@
 @startuml D1_2_semiformal
-' Figura 1.2 — Notación semiformal UML 2.x: Motor de Recomendación IA
-' Interfaces provistas / requeridas y relaciones «use» / «fallback».
-' Base: ERS VITASMARTA v3.0 (RF-07-1/3/8, RF-13-7, RD-03).
+' Figura 1.2 — Notación semiformal UML 2.x: ServicioIA y colaboradores
+' Interfaces provistas (lollipop) sobre cada proveedor, dependencias
+' «use»/«fallback»/«async» punteadas, composición (rombo relleno) para
+' las partes del ServicioIA (subsystem). Mismo conjunto de elementos que
+' 1.1 y 1.3 (contrato de alcance común). Nombres canónicos del documento.
+' Base: ERS VITASMARTA v3.0 (RF-07-1/3/8, RF-08-4, RF-13-7, RD-03).
 skinparam backgroundColor #FFFFFF
 skinparam shadowing false
 skinparam defaultFontSize 12
+skinparam componentStyle uml2
 skinparam ArrowThickness 1.4
-skinparam nodesep 34
-skinparam ranksep 44
+skinparam nodesep 46
+skinparam ranksep 52
 
-component "«component»\nAPIGateway" as GW #0F2B46;text:FFF
+component "«component»\nApiGateway" as GW #0F2B46;text:FFF
 
-component "«component»\nServicioRecomendacion" as SR #E8614D;text:FFF {
-  rectangle "«provided»\nIRecommendation" as IRE #F5C6BC;line:7A2E20
-  rectangle "RecommendationEngine\n[Colaborativo + Contenido]" as ENG #FFF;line:7A2E20
-  rectangle "FallbackHandler\n[RF-07-8]" as FBH #FFF;line:7A2E20
-  rectangle "ExplainabilityModule\n[RF-07-3]" as EXM #FFF;line:7A2E20
-  rectangle "«required»\nICatalogo" as RC1 #F5C6BC;line:7A2E20
-  rectangle "«required»\nIPerfil" as RC2 #F5C6BC;line:7A2E20
-  rectangle "«required»\nISostenibilidad" as RC3 #F5C6BC;line:7A2E20
-  IRE -[hidden]down- ENG
-  ENG -[hidden]down- FBH
-  FBH -[hidden]right- EXM
-  FBH -[hidden]down- RC1
-  RC1 -[hidden]right- RC2
-  RC2 -[hidden]right- RC3
+component "«subsystem»\nServicioIA" as IA #FBEAE4;line:E8614D {
+  component "RecommendationEngine\n[híbrido: colaborativo\n+ contenido]" as ENG #FFF;line:E8614D
+  component "FallbackHandler\n[RF-07-8]" as FBH #FFF6E3;line:E8A13D
+  component "ExplainabilityModule\n[RF-07-3]" as EXM #FFF;line:E8614D
+  ENG *-- FBH
+  ENG *-- EXM
 }
 
-component "«component»\nServicioCatalogo" as SC #0E8A7D;text:FFF {
-  rectangle "«provided»\nICatalogo" as PV1 #CDEBE4;line:0B5E55
-  rectangle "CatalogoService\n[CQRS]" as CS #FFF;line:0B5E55
-}
+component "«component»\nServicioCatalogo" as SC #0E8A7D;text:FFF
+component "«component»\nServicioIdentidad" as SI #0F2B46;text:FFF
+component "«component»\nServicioAmbiental" as SA #2E7D4F;text:FFF
+queue "«component»\nBusMensajes\n(RabbitMQ)" as BUS #FFF6E3;line:E8A13D
 
-component "«component»\nServicioPerfil" as SP #3C4650;text:FFF {
-  rectangle "«provided»\nIPerfil" as PV2 #D5DAE0;line:22262B
-  rectangle "PerfilService\n[Preferencias + Historial]" as PS #FFF;line:22262B
-}
+interface "IRecommendation" as IREC #E8614D
+interface "ICatalogo" as ICAT #0E8A7D
+interface "IPerfil" as IPER #0F2B46
+interface "ISostenibilidad" as ISOS #2E7D4F
 
-component "«component»\nServicioSostenibilidad" as SS #2E7D4F;text:FFF {
-  rectangle "«provided»\nISostenibilidad" as PV3 #CBE3D3;line:1C5132
-  rectangle "CapacidadCargaMonitor\n[RF-13]" as CM #FFF;line:1C5132
-}
+' Interfaces provistas: lollipop sobre cada proveedor
+IA -up- IREC
+SC -up- ICAT
+SI -up- IPER
+SA -up- ISOS
 
-GW -down-> IRE : GET /recommendations
-IRE -down-> ENG
+' Dependencias punteadas tipificadas
+GW .right.> IREC : «use»\nGET /recommendations
+IA .up.> ICAT : «use»
+IA .up.> IPER : «use»
+IA .up.> ISOS : «use»
 ENG .[#E8A13D].> FBH : «fallback»
-ENG -[#7A2E20]-> EXM : explica
+ENG .[#E8A13D].> BUS : «async»\nRecomendacionGenerada
 
-RC1 .[#E8614D].> PV1 : «use»
-RC2 .[#E8614D].> PV2 : «use»
-RC3 .[#E8614D].> PV3 : «use»
-
-PV1 -[#0B5E55]-> CS
-PV2 -[#22262B]-> PS
-PV3 -[#1C5132]-> CM
-
-GW -[hidden]down- SR
-SC -[hidden]right- SP
-SP -[hidden]right- SS
-RC1 -[hidden]down- SC
-RC2 -[hidden]down- SP
-RC3 -[hidden]down- SS
+IA -[hidden]down- BUS
+GW -[hidden]down- IA
+SC -[hidden]right- SI
+SI -[hidden]right- SA
 
 legend right
+  <b>Notación UML 2.x</b>
+  Lollipop ─○ interfaz provista · socket ─( requerida
+  Dependencia punteada «use» / «fallback» / «async»
+  Rombo relleno ◆— composición (partes del ServicioIA)
+
   <b>Trazabilidad ERS v3.0</b>
   RD-03 (IA independiente) · RF-07-1 (motor híbrido)
-  RF-07-3 (explicable) · RF-07-8 (fallback) · RF-13-7 (capacidad)
+  RF-07-3 (explicable) · RF-07-8 (fallback) · RF-08-4 (perfil)
 endlegend
 @enduml
