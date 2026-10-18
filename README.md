@@ -4,7 +4,6 @@ Repositorio de artefactos del **Laboratorio 02 — Documentación de Arquitectur
 Módulo 6 · Proyecto Capstone · Universidad del Magdalena · 2026-2
 
 - **Documento principal:** `VITASMARTA_Lab02_Documentacion_Arquitectonica_v7.docx` / `.pdf`
-- **Guía de montaje del repositorio:** ver `INSTRUCCIONES_REPOSITORIO.md` (paso a paso completo)
 - **Herramientas:** [editor.plantuml.com](https://editor.plantuml.com) (fuentes `.puml`) · [AcmeStudio — CMU](http://www.cs.cmu.edu/~acme/) (fuente `.acme`)
 - **Base de trazabilidad:** ERS VITASMARTA v3.0 — versión consolidada (Entregable 1)
 
